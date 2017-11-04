@@ -123,7 +123,7 @@ const subMenu = {
 const nodeTypeSet = {
         init: ['conv2d', 'linear', 'dropout2d'],
         forward: ['max_pool2d', 'view'],
-        others: ['input', 'output', 'relu', 'log_softmax']
+        others: ['input', 'output', 'relu', 'log_softmax', 'dropout']
       }
 
 const defaultEndpoints = {top: [], left: [], right: [], bottom: []}
@@ -327,25 +327,26 @@ export default {
         return this.$message.error('No input or output in network.')
       }
       const flow = []
+      function flowPush(name) {
+        for (let i = 0; i < nodeTypeSet.others.length; i++) {
+          if (name.indexOf(nodeTypeSet.others[i]) >= 0) {
+            name = nodeTypeSet.others[i]
+          }
+        }
+        flow.push(name)
+      }
       while (start != end) {
         for (let i = 0; i < connections.length; i++) {
           if (connections[i].sourceId == start) {
-            flow.push(connections[i].sourceId)
+            flowPush(connections[i].sourceId)
             start = connections[i].targetId
           }
           if (connections[i].targetId == end) {
-            flow.push(connections[i].targetId)
+            flowPush(connections[i].targetId)
           }
         }
       }
-      for (let i = 0; i < flow.length; i++) {
-        if (flow[i].indexOf('input') >= 0) {
-          flow[i] = 'input'
-        }
-        if (flow[i].indexOf('output') >= 0) {
-          flow[i] = 'output'
-        }
-      }
+      
       data.flow = flow.join('>>')
       for (let i = 0; i < flow.length; i++) {
         for (let j = 0; j < this.nodes.length; j++) {
