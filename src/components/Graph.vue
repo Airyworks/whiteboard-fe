@@ -307,6 +307,7 @@ export default {
       })
     },
     submitNetwork () {
+      const self = this
       const data = {
         init: {},
         forward: {}
@@ -327,13 +328,23 @@ export default {
         return this.$message.error('No input or output in network.')
       }
       const flow = []
+      function findNode(name) {
+        for (let i = 0; i < self.nodes.length; i++) {
+          if (self.nodes[i].name == name) {
+            return self.nodes[i]
+          }
+        }
+        return false
+      }
       function flowPush(name) {
-        if (nodeTypeSet.init.indexOf(name.split('_')[0]) >= 0 ||
-            nodeTypeSet.forward.indexOf(name.split('_')[0]) >= 0) {
-              flow.push(name)
-            } else {
-              flow.push(name.split('_')[0])
-            }
+        const node = findNode(name)
+        if (node) {
+          if (nodeTypeSet.others.indexOf(node.type) >= 0) {
+            flow.push(node.type)
+          } else {
+            flow.push(name)
+          }
+        }
         
       }
       while (start != end) {
