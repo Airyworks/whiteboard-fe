@@ -123,7 +123,7 @@ const subMenu = {
 const nodeTypeSet = {
         init: ['conv2d', 'linear', 'dropout2d'],
         forward: ['max_pool2d', 'view'],
-        others: ['input', 'output', 'relu', 'log_softmax']
+        others: ['input', 'output', 'relu', 'log_softmax', 'dropout']
       }
 
 const defaultEndpoints = {top: [], left: [], right: [], bottom: []}
@@ -171,9 +171,9 @@ export default {
           name: `${type}_${count}`,
           type,
           count,
-          param: Object.assign({}, )
+          param: Object.assign({}, defaultParam[type]),
+          endpoints: dcopy(defaultEndpoints)
         }
-        console.log('created:', newNode)
         let newNodeIndex = this.nodes.push(newNode)
         setTimeout(() => {
           this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + newNode.name))
@@ -307,24 +307,58 @@ export default {
       })
     },
     submitNetwork () {
+      const self = this
       const data = {
         init: {},
         forward: {}
       }
       const connections = this.jsPlumbObj.instance.getAllConnections()
-      let start = 'input_1', end = 'output_1'
+      let start = 'input_1', end = 'output_1', hasstart = false, hasend = false
+      for (let i = 0; i < this.nodes.length; i++) {
+        if ('input' == this.nodes[i].type) {
+          hasstart = true
+          start = this.nodes[i].name
+        }
+        if ('output' == this.nodes[i].type) {
+          hasend = true
+          end = this.nodes[i].name
+        }
+      }
+      if (!hasstart || !hasend) {
+        return this.$message.error('No input or output in network.')
+      }
       const flow = []
+      function findNode(name) {
+        for (let i = 0; i < self.nodes.length; i++) {
+          if (self.nodes[i].name == name) {
+            return self.nodes[i]
+          }
+        }
+        return false
+      }
+      function flowPush(name) {
+        const node = findNode(name)
+        if (node) {
+          if (nodeTypeSet.others.indexOf(node.type) >= 0) {
+            flow.push(node.type)
+          } else {
+            flow.push(name)
+          }
+        }
+        
+      }
       while (start != end) {
         for (let i = 0; i < connections.length; i++) {
           if (connections[i].sourceId == start) {
-            flow.push(connections[i].sourceId)
+            flowPush(connections[i].sourceId)
             start = connections[i].targetId
           }
           if (connections[i].targetId == end) {
-            flow.push(connections[i].targetId)
+            flowPush(connections[i].targetId)
           }
         }
       }
+      
       data.flow = flow.join('>>')
       for (let i = 0; i < flow.length; i++) {
         for (let j = 0; j < this.nodes.length; j++) {
@@ -356,7 +390,7 @@ lr = ${this.param.lr}
 momentum = ${this.param.momentum}
 iter_num = ${this.param.iter_num}
 batch_size = ${this.param.batch_size}`
-      vm.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
+      this.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
         alert('Submit success')
         this.$router.push('/perform')
       })

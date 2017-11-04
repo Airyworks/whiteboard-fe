@@ -29,8 +29,8 @@
       "type": "conv2d",
       "count": 1,
       "param": {
-        "in_channel": 3,
-        "out_channel": 64,
+        "in_channel": 1,
+        "out_channel": 10,
         "kernel_size": 5,
         "stride": 1,
         "padding": 0
@@ -41,8 +41,8 @@
       "type": "conv2d",
       "count": 2,
       "param": {
-        "in_channel": 3,
-        "out_channel": 64,
+        "in_channel": 10,
+        "out_channel": 20,
         "kernel_size": 5,
         "stride": 1,
         "padding": 0
@@ -65,8 +65,8 @@
       "type": "linear",
       "count": 1,
       "param": {
-        "in_channel": 64,
-        "out_channel": 10
+        "in_channel": 320,
+        "out_channel": 50
       }
     },
     {
@@ -74,7 +74,7 @@
       "type": "linear",
       "count": 2,
       "param": {
-        "in_channel": 64,
+        "in_channel": 50,
         "out_channel": 10
       }
     },
