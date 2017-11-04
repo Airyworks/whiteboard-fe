@@ -171,9 +171,9 @@ export default {
           name: `${type}_${count}`,
           type,
           count,
-          param: Object.assign({}, )
+          param: Object.assign({}, defaultParam[type]),
+          endpoints: dcopy(defaultEndpoints)
         }
-        console.log('created:', newNode)
         let newNodeIndex = this.nodes.push(newNode)
         setTimeout(() => {
           this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + newNode.name))
@@ -328,12 +328,13 @@ export default {
       }
       const flow = []
       function flowPush(name) {
-        for (let i = 0; i < nodeTypeSet.others.length; i++) {
-          if (name.indexOf(nodeTypeSet.others[i]) >= 0) {
-            name = nodeTypeSet.others[i]
-          }
-        }
-        flow.push(name)
+        if (nodeTypeSet.init.indexOf(name.split('_')[0]) >= 0 ||
+            nodeTypeSet.forward.indexOf(name.split('_')[0]) >= 0) {
+              flow.push(name)
+            } else {
+              flow.push(name.split('_')[0])
+            }
+        
       }
       while (start != end) {
         for (let i = 0; i < connections.length; i++) {
