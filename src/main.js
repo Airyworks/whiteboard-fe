@@ -7,8 +7,12 @@ import 'element-theme-chalk'
 import App from './App'
 import router from './router'
 import './assets/style/global.css'
+import VueResource from 'vue-resource'
 
+Vue.use(VueResource)
 Vue.use(ElementUI)
+
+Vue.http.options.emulateJSON = true
 
 Vue.config.productionTip = false
 
