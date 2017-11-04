@@ -1,18 +1,72 @@
 <template>
   <el-row :gutter="20" class="container">
-    <el-col :span="18">
-      <div class="jtk-demo-canvas canvas-wide flowchart-demo jtk-surface jtk-surface-nopan" id="canvas">
-        <div class="window jtk-node" id="flowchartWindow1"><strong>1</strong><br/><br/></div>
-        <div class="window jtk-node" id="flowchartWindow2"><strong>2</strong><br/><br/></div>
-        <div class="window jtk-node" id="flowchartWindow3"><strong>3</strong><br/><br/></div>
-        <div class="window jtk-node" id="flowchartWindow4"><strong>4</strong><br/><br/></div>
-      </div>
-    </el-col>
-    <el-col :span="6">
-      <el-col :span="24">
-        <el-button type="primary">Add Operation</el-button>
+    <div id="board-bar">
+      <div class="jtk-demo-main">
+        <div class="jtk-demo-canvas canvas-wide nn-map jtk-surface jtk-surface-nopan" id="board">
+          <div v-for="node in nodes"
+               :id="node.name"
+               class="window node">
+            <i class="el-icon-edit node-edit" @click="focusNode(node.name)"></i>
+            {{ node.name }}
+            <ul>
+              <li v-for="(value, key) in node.param">{{key}}: {{value}}</li>
+            </ul>
+          </div>
+        </div>
+      </div> 
+    </div>
+    <div id="menu-bar">
+      <el-col :span="24" id="main-menu" v-show="!subMenu.show">
+        <div id="new-opration-group">
+          <el-select v-model="selectedTemplate" filterable placeholder="请选择模版">
+            <el-option
+              v-for="(template, key) in templates"
+              :key="template.name"
+              :label="template.name"
+              :value="key">
+            </el-option>
+          </el-select>
+          <el-button id="new-opration-btn" type="primary" @click="initGraph" :disabled="false && !selectedTemplate">初始化图</el-button>
+          <br/><br/>
+          <el-select v-model="selectedNodeType" filterable placeholder="请选择">
+            <el-option
+              v-for="item in nodeTypes"
+              :key="item.label"
+              :label="item.label"
+              :value="item.value">
+            </el-option>
+          </el-select>
+          <el-button id="new-opration-btn" type="primary" @click="addPoint" :disabled="!selectedNodeType">添加操作</el-button>
+          <br><br>
+          <el-button id="complete-network" type="primary" @click="submitNetwork">完成网络</el-button>
+        </div>
       </el-col>
-    </el-col>
+      <el-col :span="24" id="sub-menu" v-show="subMenu.show">
+        <br>
+        <span>正在编辑: {{ subMenu.nowEdit.name }}</span>  
+        <br><br>
+        <el-form ref="form" :model="subMenu.nowEdit" label-width="60px">
+          <el-form-item
+            v-for="(value, key) in subMenu.nowEdit.param"
+            :label="key">
+            <el-input v-model="subMenu.nowEdit.param[key]"></el-input>
+          </el-form-item>
+        </el-form>
+        <el-button type="success" @click="saveChange">保存修改</el-button>
+        <el-button type="danger" @click="undoChange">取消选择</el-button>
+        <br><br>
+        <span>
+          添加数据流
+        </span>
+        <br><br>
+        <el-button-group>
+          <el-button type="primary" icon="el-icon-arrow-left"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-right"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-up"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-down"></el-button>
+        </el-button-group>
+      </el-col>
+    </div>
   </el-row>
 </template>
 
@@ -22,183 +76,264 @@ import '../assets/jsplumb/style/main.css'
 import '../assets/jsplumb/style/jsplumbtoolkit-demo.css'
 import '../assets/jsplumb/style/demo.css'
 
+const dcopy = require('deep-copy')
 const jsPlumb = require("jsplumb")
+const defaultParam = require('../assets/config/nn.param.json')
+const templates = require('../assets/config/templates.json')
+const nodetypes = require('../assets/config/nodetypes.json')
+const subMenu = {
+        show: false,
+        nowEditName: undefined,
+        nowEdit: { param: {} }
+      }
+
+const defaultEndpoints = {top: [], left: [], right: [], bottom: []}
+
+// import networks
+templates.mnist.data = require('../assets/config/networks/mnist.json')
+
+// attatch endpoint arr to nodes
+for (let i in templates) {
+  for (let j in templates[i].data.nodes) {
+    templates[i].data.nodes[j].endpoints = dcopy(defaultEndpoints)
+  }
+}
 
 export default {
   name: 'Graph',
   data () {
     return {
-      
+      templates: dcopy(templates),
+      selectedTemplate: undefined,
+      nodeTypes: {
+        init: ['conv2d', 'linear', 'dropout2d'],
+        forward: ['max_pool2d', 'view', 'log_softmax'],
+        others: ['input', 'output', 'relu']
+      },
+      nodeTypes: dcopy(nodetypes),
+      selectedNodeType: undefined,
+      nodes: [],
+      subMenu: dcopy(subMenu)
+    }
+  },
+  methods: {
+    addPoint (e) {
+      if (this.selectedNodeType) {
+        const group = this.selectedNodeType.split('.')[0]
+        const type = this.selectedNodeType.split('.')[1]
+        let count = 1
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (type === this.nodes[i].type && count <= this.nodes[i].count) {
+            count = this.nodes[i].count + 1
+          }
+        }
+        const newNode = {
+          name: `${type}_${count}`,
+          type,
+          count,
+          param: Object.assign({}, )
+        }
+        console.log('created:', newNode)
+        this.nodes.push(newNode)
+        setTimeout(() => {
+          this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + newNode.name))
+        })
+        this.selectedNodeType = undefined
+      } else {
+        // no selected opration
+      }
+    },
+    focusNode (name) {
+      if (!this.subMenu.show) {
+        this.subMenu.show = true
+        this.subMenu.nowEditName = name
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (this.subMenu.nowEditName === this.nodes[i].name) {
+            this.subMenu.nowEdit = dcopy(this.nodes[i])
+          }
+        }
+      }
+    },
+    saveChange () {
+      for (let i = 0; i < this.nodes.length; i++) {
+        if (this.subMenu.nowEditName === this.nodes[i].name) {
+          this.nodes[i] = dcopy(this.subMenu.nowEdit)
+        }
+      }
+      this.subMenu = Object.assign({}, subMenu)
+    },
+    undoChange () {
+      this.subMenu = Object.assign({}, subMenu)
+    },
+    initGraph () {
+      console.log(this.selectedTemplate)
+      // for(let i = 0; i < this.nodes.length; i++) {
+      //   this.jsPlumbObj.instance.addEndpoint(this.nodes[i].name, this.jsPlumbObj.endPointStyle, {
+      //     anchor: this.jsPlumbObj.defaultAnchors.left
+      //   })
+      //   this.jsPlumbObj.instance.addEndpoint(this.nodes[i].name, this.jsPlumbObj.endPointStyle, {
+      //     anchor: this.jsPlumbObj.defaultAnchors.right
+      //   })
+      //   this.nodes[i].endpoints.left.push(dcopy(this.jsPlumbObj.defaultAnchors.left))
+      //   this.nodes[i].endpoints.right.push(dcopy(this.jsPlumbObj.defaultAnchors.right))
+      // }
+    },
+    submitNetwork () {
+      console.log(this.jsPlumbObj.instance.getAllConnections())
     }
   },
   beforeRouteEnter (to, from, next) {
-    next (() => {
-      console.log('dom is ready')
-      console.log(jsPlumb)
-      // return 
-      jsPlumb.ready(() => {
+    next (vm => {
+      vm.jsPlumbObj = {}
+      jsPlumb.ready(function () {
         var instance = jsPlumb.getInstance({
-          // default drag options
           DragOptions: { cursor: 'pointer', zIndex: 2000 },
-          // the overlays to decorate each connection with.  note that the label overlay uses a function to generate the label text; in this
-          // case it returns the 'labelText' member that we set on each connection in the 'init' method below.
-          ConnectionOverlays: [
-            [ "Arrow", {
-              location: 1,
-              visible:true,
-              width:11,
-              length:11,
-              id:"ARROW",
-              events:{
-                click:function() { alert("you clicked on the arrow overlay")}
-              }
-            } ],
-            [ "Label", {
-              location: 0.1,
-              id: "label",
-              cssClass: "aLabel",
-              events:{
-                tap:function() { alert("hey"); }
-              }
-            }]
-          ],
+          PaintStyle: { stroke: '#666' },
+          EndpointHoverStyle: { fill: "orange" },
+          HoverPaintStyle: { stroke: "orange" },
+          EndpointStyle: { width: 20, height: 16, stroke: '#666' },
+          Endpoint: "Rectangle",
+          Anchors: ["TopCenter", "TopCenter"],
           Container: "canvas"
         });
-
-        var basicType = {
-          connector: "StateMachine",
-          paintStyle: { stroke: "red", strokeWidth: 4 },
-          hoverPaintStyle: { stroke: "blue" },
-          overlays: [
-            "Arrow"
-          ]
-        };
-        instance.registerConnectionType("basic", basicType);
-
-        // this is the paint style for the connecting lines..
-        var connectorPaintStyle = {
-          strokeWidth: 2,
-          stroke: "#61B7CF",
-          joinstyle: "round",
-          outlineStroke: "white",
-          outlineWidth: 2
-        },
-        // .. and this is the hover style.
-        connectorHoverStyle = {
-          strokeWidth: 3,
-          stroke: "#216477",
-          outlineWidth: 5,
-          outlineStroke: "white"
-        },
-        endpointHoverStyle = {
-          fill: "#216477",
-          stroke: "#216477"
-        },
-        // the definition of source endpoints (the small blue ones)
-        sourceEndpoint = {
-          endpoint: "Dot",
-          paintStyle: {
-            stroke: "#7AB02C",
-            fill: "transparent",
-            radius: 7,
-            strokeWidth: 1
-          },
-          isSource: true,
-          connector: [ "Flowchart", { stub: [40, 60], gap: 10, cornerRadius: 5, alwaysRespectStubs: true } ],
-          connectorStyle: connectorPaintStyle,
-          hoverPaintStyle: endpointHoverStyle,
-          connectorHoverStyle: connectorHoverStyle,
-          dragOptions: {},
-          overlays: [
-            [ "Label", {
-              location: [0.5, 1.5],
-              label: "Drag",
-              cssClass: "endpointSourceLabel",
-              visible:false
-            } ]
-          ]
-        },
-        // the definition of target endpoints (will appear when the user drags a connection)
-        targetEndpoint = {
-          endpoint: "Dot",
-          paintStyle: { fill: "#7AB02C", radius: 7 },
-          hoverPaintStyle: endpointHoverStyle,
-          maxConnections: -1,
-          dropOptions: { hoverClass: "hover", activeClass: "active" },
-          isTarget: true,
-          overlays: [
-            [ "Label", { location: [0.5, -0.5], label: "Drop", cssClass: "endpointTargetLabel", visible:false } ]
-          ]
-        },
-        init = function (connection) {
-          connection.getOverlay("label").setLabel(connection.sourceId.substring(15) + "-" + connection.targetId.substring(15));
-        };
-
-        var _addEndpoints = function (toId, sourceAnchors, targetAnchors) {
-          for (var i = 0; i < sourceAnchors.length; i++) {
-            var sourceUUID = toId + sourceAnchors[i];
-            instance.addEndpoint("flowchart" + toId, sourceEndpoint, {
-              anchor: sourceAnchors[i], uuid: sourceUUID
-            });
-          }
-          for (var j = 0; j < targetAnchors.length; j++) {
-            var targetUUID = toId + targetAnchors[j];
-            instance.addEndpoint("flowchart" + toId, targetEndpoint, { anchor: targetAnchors[j], uuid: targetUUID });
-          }
-        };
-
+        window.instance = instance
         // suspend drawing and initialise.
         instance.batch(function () {
-          _addEndpoints("Window4", ["TopCenter", "BottomCenter"], ["LeftMiddle", "RightMiddle"]);
-          _addEndpoints("Window2", ["LeftMiddle", "BottomCenter"], ["TopCenter", "RightMiddle"]);
-          _addEndpoints("Window3", ["RightMiddle", "BottomCenter"], ["LeftMiddle", "TopCenter"]);
-          _addEndpoints("Window1", ["LeftMiddle", "RightMiddle"], ["TopCenter", "BottomCenter"]);
 
-          // listen for new connections; initialise them the same way we initialise the connections at startup.
-          instance.bind("connection", function (connInfo, originalEvent) {
-            init(connInfo.connection);
+          // bind to connection/connectionDetached events, and update the list of connections on screen.
+          instance.bind("connection", function (info, originalEvent) {
+            // updateConnections(info.connection);
+            console.log(info.connection)
+            
+          });
+          instance.bind("connectionDetached", function (info, originalEvent) {
+            // updateConnections(info.connection, true);
+            // console.log(info.connection)
           });
 
-          // make all the window divs draggable
-          instance.draggable(jsPlumb.getSelector(".flowchart-demo .window"), { grid: [20, 20] });
-          // THIS DEMO ONLY USES getSelector FOR CONVENIENCE. Use your library's appropriate selector
-          // method, or document.querySelectorAll:
-          //jsPlumb.draggable(document.querySelectorAll(".window"), { grid: [20, 20] });
+          instance.bind("connectionMoved", function (info, originalEvent) {
+            //  only remove here, because a 'connection' event is also fired.
+            // in a future release of jsplumb this extra connection event will not
+            // be fired.
+            // updateConnections(info.connection, true);
+          });
 
-          // connect a few up
-          instance.connect({uuids: ["Window2BottomCenter", "Window3TopCenter"], editable: true});
-          instance.connect({uuids: ["Window2LeftMiddle", "Window4LeftMiddle"], editable: true});
-          instance.connect({uuids: ["Window4TopCenter", "Window4RightMiddle"], editable: true});
-          instance.connect({uuids: ["Window3RightMiddle", "Window2RightMiddle"], editable: true});
-          instance.connect({uuids: ["Window4BottomCenter", "Window1TopCenter"], editable: true});
-          instance.connect({uuids: ["Window3BottomCenter", "Window1BottomCenter"], editable: true});
+          instance.bind("dblclick", function (component, originalEvent) {
+            instance.deleteConnection(component)
+          });
+
+          // configure some drop options for use by all endpoints.
+          var dropOptions = {
+            tolerance: "touch",
+            hoverClass: "dropHover",
+            activeClass: "dragActive"
+          };
+
           //
-
+          // first example endpoint.  it's a 25x21 rectangle (the size is provided in the 'style' arg to the Endpoint),
+          // and it's both a source and target.  the 'scope' of this Endpoint is 'exampleConnection', meaning any connection
+          // starting from this Endpoint is of type 'exampleConnection' and can only be dropped on an Endpoint target
+          // that declares 'exampleEndpoint' as its drop scope, and also that
+          // only 'exampleConnection' types can be dropped here.
           //
-          // listen for clicks on connections, and offer to delete connections on click.
+          // the connection style for this endpoint is a Bezier curve (we didn't provide one, so we use the default), with a strokeWidth of
+          // 5 pixels, and a gradient.
           //
-          instance.bind("click", function (conn, originalEvent) {
-            // if (confirm("Delete connection from " + conn.sourceId + " to " + conn.targetId + "?"))
-            //   instance.detach(conn);
-            conn.toggleType("basic");
+          // there is a 'beforeDrop' interceptor on this endpoint which is used to allow the user to decide whether
+          // or not to allow a particular connection to be established.
+          //
+          var connectorPaintStyle = {
+            strokeWidth: 2,
+            stroke: "#61B7CF",
+            joinstyle: "round",
+            outlineStroke: "white",
+            outlineWidth: 2
+          },
+      // .. and this is the hover style.
+          connectorHoverStyle = {
+            strokeWidth: 3,
+            stroke: "#216477",
+            outlineWidth: 5,
+            outlineStroke: "white"
+          },
+          endpointHoverStyle = {
+            fill: "#216477",
+            stroke: "#216477"
+          }
+
+          let endPointStyle = {
+            endpoint: "Dot",
+            paintStyle: {
+              stroke: '#7AB02C',
+              fill: "#7AB02C",
+              radius: 7,
+              strokeWidth: 1
+            },
+            isSource: true,
+            reattach: true,
+            scope: "blue",
+            // connectorStyle: {
+            //   strokeWidth: 5,
+            //   stroke: '#7AB02C'
+            // },
+            connectorStyle: connectorPaintStyle,
+            hoverPaintStyle: endpointHoverStyle,
+            connectorHoverStyle: connectorHoverStyle,
+            isTarget: true,
+            beforeDrop: function (params) {
+              return confirm("Connect " + params.sourceId + " to " + params.targetId + "?");
+            },
+            dropOptions: dropOptions
+          }
+
+          vm.jsPlumbObj.endPointStyle = endPointStyle
+
+          // setup some DynamicAnchors for use with the blue endpoints
+          // and a function to set as the maxConnections callback.
+          let maxConnectionsCallback = function (info) {
+            alert("Cannot drop connection " + info.connection.id + " : maxConnections has been reached on Endpoint " + info.endpoint.id);
+          }
+          
+
+          // make .window divs draggable
+          instance.draggable(jsPlumb.getSelector(".nn-map .window"));
+
+          var hideLinks = jsPlumb.getSelector(".nn-map .hide");
+          instance.on(hideLinks, "click", function (e) {
+            instance.toggleVisible(this.getAttribute("rel"));
+            jsPlumbUtil.consume(e);
           });
 
-          instance.bind("connectionDrag", function (connection) {
-            console.log("connection " + connection.id + " is being dragged. suspendedElement is ", connection.suspendedElement, " of type ", connection.suspendedElementType);
+          var dragLinks = jsPlumb.getSelector(".nn-map .drag");
+          instance.on(dragLinks, "click", function (e) {
+            var s = instance.toggleDraggable(this.getAttribute("rel"));
+            this.innerHTML = (s ? 'disable dragging' : 'enable dragging');
+            jsPlumbUtil.consume(e);
           });
 
-          instance.bind("connectionDragStop", function (connection) {
-            console.log("connection " + connection.id + " was dragged");
+          var detachLinks = jsPlumb.getSelector(".nn-map .detach");
+          instance.on(detachLinks, "click", function (e) {
+            instance.detachAllConnections(this.getAttribute("rel"));
+            jsPlumbUtil.consume(e);
           });
 
-          instance.bind("connectionMoved", function (params) {
-            console.log("connection " + params.connection.id + " was moved");
-          });
-        });
+          instance.on(document.getElementById("clear"), "click", function (e) {
+            instance.detachEveryConnection();
+            showConnectionInfo("");
+            jsPlumbUtil.consume(e);
+          })
+        })
 
         jsPlumb.fire("jsPlumbDemoLoaded", instance);
 
-      });
+        vm.jsPlumbObj.instance = instance
+        vm.jsPlumbObj.defaultAnchors = {
+            top: [0.25, 0, 0, 0],
+            bottom: [0.25, 1, 0, 1],
+            left: [0, 0.25, 0, 0],
+            right: [1, 0.25, 1, 1]
+          }
+      })
     })
   }
 }
@@ -207,23 +342,62 @@ export default {
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style lang="stylus" scoped>
 
-  .jtk-demo-canvas
-    overflow: auto !important
-    &::-webkit-scrollbar-track
-      -webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3)
-      background-color: #F5F5F5
-    &::-webkit-scrollbar
-      width: 10px
-      height: 10px
-      background-color: #F5F5F5
-    &::-webkit-scrollbar-thumb
-      background-color: #F90;	
-      background-image: -webkit-linear-gradient(45deg,
-                                                rgba(255, 255, 255, .2) 25%,
-                            transparent 25%,
-                            transparent 50%,
-                            rgba(255, 255, 255, .2) 50%,
-                            rgba(255, 255, 255, .2) 75%,
-                            transparent 75%,
-                            transparent) 
+.jtk-demo-canvas
+  overflow: auto !important
+  &::-webkit-scrollbar-track
+    background-color: #F5F5F5
+  &::-webkit-scrollbar
+    width: 10px
+    height: 10px
+    background-color: #F5F5F5
+  &::-webkit-scrollbar-thumb
+    background-color: rgb(96, 125, 139);	
+    background-image: -webkit-linear-gradient(45deg,
+                                              rgba(255, 255, 255, .2) 25%,
+                          transparent 25%,
+                          transparent 50%,
+                          rgba(255, 255, 255, .2) 50%,
+                          rgba(255, 255, 255, .2) 75%,
+                          transparent 75%,
+                          transparent) 
+
+#board
+  border: none !important
+  background-size: 25px 25px
+  background-color: white
+  background-image: -webkit-linear-gradient(transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)),
+                    -webkit-linear-gradient(0deg, transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5))
+  background-image: -moz-linear-gradient(transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)),
+                    -moz-linear-gradient(0deg, transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5))
+  background-image: linear-gradient(transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)),
+                    linear-gradient(90deg, transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5))
+  -pie-background: linear-gradient(transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)) 0 0 / 50px 50px,
+                  linear-gradient(90deg, transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)) 0 0 / 50px 50px white
+  & .jtk-node
+    color: #666
+  & .node
+    position: absolute
+    padding-top: 20px
+    text-align: center
+    & ul
+      padding: 0
+    & .node-edit
+      position: absolute
+      right: 5px
+      top: 5px
+
+#menu-bar
+  width: 350px
+  float: right
+  & #new-opration-group
+    & #new-opration-btn
+      transition: .5s
+
+.container
+  position: relative
+  & #board-bar
+    position: absolute
+    left: 20px
+    right: 370px
+
 </style>

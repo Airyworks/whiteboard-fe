@@ -1,0 +1,38 @@
+[
+  {
+    "value": "others.input",
+    "label": "输入"
+  },
+  {
+    "value": "others.output",
+    "label": "输出"
+  },
+  {
+    "value": "init.conv2d",
+    "label": "卷积"
+  },
+  {
+    "value": "init.linear",
+    "label": "linear"
+  },
+  {
+    "value": "init.dropout2d",
+    "label": "dropout2d"
+  },
+  {
+    "value": "forward.relu",
+    "label": "relu"
+  },
+  {
+    "value": "forward.max_pool2d",
+    "label": "max_pool2d"
+  },
+  {
+    "value": "forward.view",
+    "label": "view"
+  },
+  {
+    "value": "forward.log_softmax",
+    "label": "log_softmax"
+  }
+]

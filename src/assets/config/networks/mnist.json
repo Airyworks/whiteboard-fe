@@ -1,0 +1,163 @@
+{
+  "nodes": [
+    {
+      "name": "input_1",
+      "type": "input",
+      "count": 1,
+      "param": {}
+    },
+    {
+      "name": "conv2d_1",
+      "type": "conv2d",
+      "count": 1,
+      "param": {
+        "in_channel": 3,
+        "out_channel": 64,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 0
+      }
+    },
+    {
+      "name": "conv2d_2",
+      "type": "conv2d",
+      "count": 2,
+      "param": {
+        "in_channel": 3,
+        "out_channel": 64,
+        "kernel_size": 5,
+        "stride": 1,
+        "padding": 0
+      }
+    },
+    {
+      "name": "dropout2d_1",
+      "type": "dropout2d",
+      "count": 1,
+      "param": {}
+    },
+    {
+      "name": "dropout_1",
+      "type": "dropout",
+      "count": 1,
+      "param": {}
+    },
+    {
+      "name": "linear_1",
+      "type": "linear",
+      "count": 1,
+      "param": {
+        "in_channel": 64,
+        "out_channel": 10
+      }
+    },
+    {
+      "name": "linear_2",
+      "type": "linear",
+      "count": 2,
+      "param": {
+        "in_channel": 64,
+        "out_channel": 10
+      }
+    },
+    {
+      "name": "max_pool2d_1",
+      "type": "max_pool2d",
+      "count": 1,
+      "param": {
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 0
+      }
+    },
+    {
+      "name": "max_pool2d_2",
+      "type": "max_pool2d",
+      "count": 2,
+      "param": {
+        "kernel_size": 2,
+        "stride": 2,
+        "padding": 0
+      }
+    },
+    {
+      "name": "view_1",
+      "type": "view",
+      "count": 1,
+      "param": {
+        "arg0": -1,
+        "arg1": 320
+      }
+    },
+    {
+      "name": "log_softmax_1",
+      "type": "log_softmax",
+      "count": 1,
+      "param": {}
+    },
+    {
+      "name": "output_1",
+      "type": "output",
+      "count": 1,
+      "param": {}
+    }
+  ],
+  "connections": [
+    {
+      "source": "input_1",
+      "target": "conv2d_1"
+    },
+    {
+      "source": "conv2d_1",
+      "target": "max_pool2d_1"
+    },
+    {
+      "source": "max_pool2d_1",
+      "target": "relu"
+    },
+    {
+      "source": "relu",
+      "target": "conv2d_2"
+    },
+    {
+      "source": "conv2d_2",
+      "target": "dropout2d_1"
+    },
+    {
+      "source": "dropout2d_1",
+      "target": "max_pool2d_2"
+    },
+    {
+      "source": "max_pool2d_2",
+      "target": "relu"
+    },
+    {
+      "source": "relu",
+      "target": "view_1"
+    },
+    {
+      "source": "view_1",
+      "target": "linear_1"
+    },
+    {
+      "source": "linear_1",
+      "target": "relu"
+    },
+    {
+      "source": "relu",
+      "target": "dropout_1"
+    },
+    {
+      "source": "dropout_1",
+      "target": "linear_2"
+    },
+    {
+      "source": "linear_2",
+      "target": "log_softmax_1"
+    },
+    {
+      "source": "log_softmax_1",
+      "target": "output_1"
+    }
+  ]
+}
