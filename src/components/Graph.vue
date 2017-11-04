@@ -356,7 +356,7 @@ lr = ${this.param.lr}
 momentum = ${this.param.momentum}
 iter_num = ${this.param.iter_num}
 batch_size = ${this.param.batch_size}`
-      vm.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
+      this.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
         alert('Submit success')
         this.$router.push('/perform')
       })
