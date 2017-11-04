@@ -86,7 +86,7 @@ export default {
           loss.push(resp.body.loss)
           vm.$chart.update()
         })
-      }, 200)
+      }, 500)
     })
   },
   data() {
