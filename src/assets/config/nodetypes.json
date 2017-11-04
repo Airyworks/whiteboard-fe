@@ -1,15 +1,15 @@
 [
   {
     "value": "others.input",
-    "label": "输入"
+    "label": "output"
   },
   {
     "value": "others.output",
-    "label": "输出"
+    "label": "input"
   },
   {
     "value": "init.conv2d",
-    "label": "卷积"
+    "label": "conv2d"
   },
   {
     "value": "init.linear",

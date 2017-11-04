@@ -38,15 +38,44 @@
             </el-option>
           </el-select>
           <el-button id="new-opration-btn" type="primary" @click="addPoint" :disabled="!selectedNodeType">Add</el-button>
+          <br/><br/>
+          <el-select v-model="selectedLossFunction" filterable placeholder="Loss Function">
+            <el-option
+              v-for="item in lossFunctions"
+              :key="item"
+              :label="item"
+              :value="item">
+            </el-option>
+          </el-select>
+          <br><br>
+          <el-select v-model="selectedDataset" filterable placeholder="Dataset">
+            <el-option
+              v-for="item in datasets"
+              :key="item"
+              :label="item"
+              :value="item">
+            </el-option>
+          </el-select>
+          <br><br>
+          <el-form ref="form" :model="param" label-width="80px">
+            <el-form-item
+              v-for="(value, key) in param"
+              :label="key"
+              v-bind:data="value"
+              v-bind:key="key"
+              style="width: 290px;">
+              <el-input v-model="param[key]"></el-input>
+            </el-form-item>
+          </el-form>
           <br><br>
           <el-button id="complete-network" type="primary" @click="submitNetwork">Submit Network</el-button>
         </div>
       </el-col>
       <el-col :span="24" id="sub-menu" v-show="subMenu.show">
         <br>
-        <span>正在编辑: {{ subMenu.nowEdit.name }}</span>  
+        <span>Editting: {{ subMenu.nowEdit.name }}</span>  
         <br><br>
-        <el-form ref="form" :model="subMenu.nowEdit" label-width="60px">
+        <el-form ref="form" :model="subMenu.nowEdit" label-width="100px">
           <el-form-item
             v-for="(value, key) in subMenu.nowEdit.param"
             :label="key"
@@ -55,11 +84,11 @@
             <el-input v-model="subMenu.nowEdit.param[key]"></el-input>
           </el-form-item>
         </el-form>
-        <el-button type="success" @click="saveChange">保存修改</el-button>
-        <el-button type="danger" @click="undoChange">取消选择</el-button>
+        <el-button type="success" @click="saveChange">Save</el-button>
+        <el-button type="danger" @click="undoChange">Cancel</el-button>
         <br><br>
         <span>
-          添加数据流
+          Add data flow
         </span>
         <br><br>
         <el-button-group>
@@ -84,10 +113,17 @@ const jsPlumb = require("jsplumb")
 const defaultParam = require('../assets/config/nn.param.json')
 const templates = require('../assets/config/templates.json')
 const nodetypes = require('../assets/config/nodetypes.json')
+const configs = require('../assets/config/config.json')
 const subMenu = {
         show: false,
         nowEditName: undefined,
         nowEdit: { param: {} }
+      }
+
+const nodeTypeSet = {
+        init: ['conv2d', 'linear', 'dropout2d'],
+        forward: ['max_pool2d', 'view'],
+        others: ['input', 'output', 'relu', 'log_softmax']
       }
 
 const defaultEndpoints = {top: [], left: [], right: [], bottom: []}
@@ -108,12 +144,12 @@ export default {
     return {
       templates: dcopy(templates),
       selectedTemplate: undefined,
+      lossFunctions: Object.assign({}, configs.lossFunctions),
+      selectedLossFunction: 'nll_loss',
+      datasets: Object.assign({}, configs.dataset),
+      selectedDataset: 'mnist',
+      param: Object.assign({}, configs.param),
       connections: [],
-      nodeTypes: {
-        init: ['conv2d', 'linear', 'dropout2d'],
-        forward: ['max_pool2d', 'view', 'log_softmax'],
-        others: ['input', 'output', 'relu']
-      },
       nodeTypes: dcopy(nodetypes),
       selectedNodeType: undefined,
       nodes: [],
@@ -138,9 +174,19 @@ export default {
           param: Object.assign({}, )
         }
         console.log('created:', newNode)
-        this.nodes.push(newNode)
+        let newNodeIndex = this.nodes.push(newNode)
         setTimeout(() => {
           this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + newNode.name))
+          let leftEndpoint = this.jsPlumbObj.instance.addEndpoint(this.nodes[newNodeIndex - 1].name,
+            this.jsPlumbObj.endPointStyle, {
+            anchor: this.jsPlumbObj.defaultAnchors.left
+          })
+          let rightEndpoint = this.jsPlumbObj.instance.addEndpoint(this.nodes[newNodeIndex - 1].name,
+            this.jsPlumbObj.endPointStyle, {
+            anchor: this.jsPlumbObj.defaultAnchors.right
+          })
+          this.nodes[newNodeIndex - 1].endpoints.left.push(leftEndpoint)
+          this.nodes[newNodeIndex - 1].endpoints.right.push(rightEndpoint)
         })
         this.selectedNodeType = undefined
       } else {
@@ -148,12 +194,14 @@ export default {
       }
     },
     focusNode (name) {
+      console.log(name)
       if (!this.subMenu.show) {
         this.subMenu.show = true
         this.subMenu.nowEditName = name
         for (let i = 0; i < this.nodes.length; i++) {
           if (this.subMenu.nowEditName === this.nodes[i].name) {
-            this.subMenu.nowEdit = dcopy(this.nodes[i])
+            this.subMenu.nowEdit = Object.assign({}, this.nodes[i])
+            this.subMenu.nowEdit.param = Object.assign({}, this.nodes[i].param)
           }
         }
       }
@@ -161,7 +209,7 @@ export default {
     saveChange () {
       for (let i = 0; i < this.nodes.length; i++) {
         if (this.subMenu.nowEditName === this.nodes[i].name) {
-          this.nodes[i] = dcopy(this.subMenu.nowEdit)
+          this.nodes[i].param = Object.assign({}, this.subMenu.nowEdit.param)
         }
       }
       this.subMenu = Object.assign({}, subMenu)
@@ -205,7 +253,7 @@ export default {
           if (left >= 900) {
             left -= 200
           } else {
-            left += 200
+            left += 200 
           }
         }
       }
@@ -223,7 +271,6 @@ export default {
       })
       setTimeout(() => {
         for (let i = 0; i < this.connections.length; i++) {
-          console.log(this.connections[i])
           let source, target
           for (let j = 0; j < this.nodes.length; j++) {
             if (this.nodes[j].name == this.connections[i].source) {
@@ -233,8 +280,6 @@ export default {
               target = this.nodes[j]
             }
           }
-          console.log(this.connections[i].target)
-          console.log(source, target)
           if (source.left < target.left) {
             this.jsPlumbObj.instance.connect({
               source: source.endpoints.right[0],
@@ -262,7 +307,59 @@ export default {
       })
     },
     submitNetwork () {
-      console.log(this.jsPlumbObj.instance.getAllConnections())
+      const data = {
+        init: {},
+        forward: {}
+      }
+      const connections = this.jsPlumbObj.instance.getAllConnections()
+      let start = 'input_1', end = 'output_1'
+      const flow = []
+      while (start != end) {
+        for (let i = 0; i < connections.length; i++) {
+          if (connections[i].sourceId == start) {
+            flow.push(connections[i].sourceId)
+            start = connections[i].targetId
+          }
+          if (connections[i].targetId == end) {
+            flow.push(connections[i].targetId)
+          }
+        }
+      }
+      data.flow = flow.join('>>')
+      for (let i = 0; i < flow.length; i++) {
+        for (let j = 0; j < this.nodes.length; j++) {
+          if (flow[i] == this.nodes[j].name) {
+            if (nodeTypeSet.init.indexOf(this.nodes[j].type) >= 0) {
+              const order = configs.dataOrder[this.nodes[j].type],
+                    orderParam = [this.nodes[j].type]
+              for (let k = 0; k < order.length; k++) {
+                orderParam.push(this.nodes[j].param[order[k]])
+              }
+              data.init[this.nodes[j].name] = orderParam.join(',')
+            } else if (nodeTypeSet.forward.indexOf(this.nodes[j].type) >= 0) {
+              const order = configs.dataOrder[this.nodes[j].type],
+                    orderParam = [this.nodes[j].type]
+              for (let k = 0; k < order.length; k++) {
+                orderParam.push(this.nodes[j].param[order[k]])
+              }
+              data.forward[this.nodes[j].name] = orderParam.join(',')
+            } else {
+              // console.log('others', this.nodes[j].type)
+            }
+          }
+        }
+      }
+      data.loss = this.selectedLossFunction
+      data.dataset = this.selectedDataset
+      data.param = `[global]
+lr = ${this.param.lr}
+momentum = ${this.param.momentum}
+iter_num = ${this.param.iter_num}
+batch_size = ${this.param.batch_size}`
+      vm.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
+        alert('Submit success')
+        this.$router.push('/perform')
+      })
     }
   },
   beforeRouteEnter (to, from, next) {
@@ -295,8 +392,7 @@ export default {
             // bind to connection/connectionDetached events, and update the list of connections on screen.
             instance.bind("connection", function (info, originalEvent) {
               // updateConnections(info.connection);
-              console.log(info.connection)
-              
+              // console.log(info.connection)
             });
             instance.bind("connectionDetached", function (info, originalEvent) {
               // updateConnections(info.connection, true);
@@ -364,15 +460,15 @@ export default {
               isSource: true,
               reattach: true,
               scope: "blue",
-              // connectorStyle: {
-              //   strokeWidth: 5,
-              //   stroke: '#7AB02C'
-              // },
+              connector: ["Flowchart", {
+                  stub: [0, 30], gap: 0, cornerRadius: 5, alwaysRespectStubs: true }
+              ],
               connectorStyle: connectorPaintStyle,
               hoverPaintStyle: endpointHoverStyle,
               connectorHoverStyle: connectorHoverStyle,
               isTarget: true,
               beforeDrop: function (params) {
+                return true
                 return confirm("Connect " + params.sourceId + " to " + params.targetId + "?");
               },
               dropOptions: dropOptions
@@ -423,7 +519,7 @@ export default {
               top: [0.25, 0, 0, 0],
               bottom: [0.25, 1, 0, 1],
               left: [0, 0.25, 0, 0],
-              right: [1, 0.25, 1, 1]
+              right: [1, 0.25, 1, 0]
             }
         })
       }

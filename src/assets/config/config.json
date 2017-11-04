@@ -1,0 +1,17 @@
+{
+  "lossFunctions": ["nll_loss"],
+  "dataset": ["mnist"],
+  "param": {
+    "lr": 0.01,
+    "momentum": 0.5,
+    "iter_num": 2000,
+    "batch_size": 64
+  },
+  "dataOrder": {
+    "conv2d": ["in_channel", "out_channel", "kernel_size", "stride", "padding"],
+    "linear": ["in_channel", "out_channel"],
+    "max_pool2d": ["kernel_size", "stride", "padding"],
+    "view": ["arg0", "arg1"],
+    "dropout2d": []
+  }
+}

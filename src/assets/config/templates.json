@@ -1,6 +1,6 @@
 {
   "mnist": {
-    "name": "mnist-数字识别",
+    "name": "mnist-Number Recognize",
     "network": "mnist.json"
   }
 }
