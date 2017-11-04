@@ -312,7 +312,20 @@ export default {
         forward: {}
       }
       const connections = this.jsPlumbObj.instance.getAllConnections()
-      let start = 'input_1', end = 'output_1'
+      let start = 'input_1', end = 'output_1', hasstart = false, hasend = false
+      for (let i = 0; i < this.nodes.length; i++) {
+        if ('input' == this.nodes[i].type) {
+          hasstart = true
+          start = this.nodes[i].name
+        }
+        if ('output' == this.nodes[i].type) {
+          hasend = true
+          end = this.nodes[i].name
+        }
+      }
+      if (!hasstart || !hasend) {
+        return this.$message.error('No input or output in network.')
+      }
       const flow = []
       while (start != end) {
         for (let i = 0; i < connections.length; i++) {
