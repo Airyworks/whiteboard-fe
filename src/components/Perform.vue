@@ -6,7 +6,7 @@
     </div>
     <div class="progress">
       <p class="progress-title">Trainning Progress</p>
-      <el-progress :percentage="progress" :status="completed?'success':null"></el-progress>
+      <el-progress :text-inside="true" :stroke-width="18" :percentage="progress" :status="completed?'success':null"></el-progress>
     </div>
   </div>
   <transition name="fade">
@@ -16,7 +16,7 @@
         <el-upload
           class="avatar-uploader"
           id="upload"
-          action="http://localhost:80/task/picture"
+          action="http://localhost:12450/task/picture"
           :show-file-list="false"
           :on-success="handleAvatarSuccess"
           :before-upload="beforeAvatarUpload">
@@ -24,7 +24,9 @@
           <i v-else class="el-icon-plus avatar-uploader-icon"></i>
         </el-upload>
       </div>
-      <div v-if="resultDisplay" class="result">
+      <span class="seperate"></span>
+      <!--<div v-if="resultDisplay" class="result">-->
+      <div class="result">
         <p class="result-title">The recognization result:</p>
         <p class="result-num">{{ recogNum }}</p>
       </div>
@@ -58,12 +60,12 @@ export default {
       const acc = vm.chartData.datasets[0].data
       const loss = vm.chartData.datasets[1].data
       const interval = window.setInterval(() => {
-        vm.$http.get('http://localhost:80/task/process', { credentials: true }).then(resp => {
+        vm.$http.get('http://localhost:12450/task/process', { credentials: true }).then(resp => {
           if (resp.body.complete) {
             vm.completed = true
             vm.progress = 100
             window.clearInterval(interval)
-            vm.$http.get('http://localhost:80/task/status', { credentials: true }).then(resp => {
+            vm.$http.get('http://localhost:12450/task/status', { credentials: true }).then(resp => {
               const data = log2object(resp.body.data)
               while(labels.pop()) {}
               while(acc.pop()) {}
@@ -90,25 +92,29 @@ export default {
     return {
       imageUrl: '',
       resultDisplay: false,
-      recogNum: '',
+      recogNum: '?',
       chartData: {
         labels : [],
         datasets : [
           { 
             label: "Accuracy",
-            fillColor : "rgba(220,220,220,0.5)",
-            strokeColor : "rgba(220,220,220,1)",
-            pointColor : "rgba(220,220,220,1)",
-            pointStrokeColor : "#fff",
-            data : []
+            borderColor: "rgba(151,187,205,0.5)",
+            // backgroundColor: "rgba(151,187,205,0.5)",
+            backgroundColor: 'rgba(255,255,255,0)',
+            data: [],
+            yAxisID: 'acc',
+            borderWidth: 2,
+            pointRadius: 2
           },
           {
             label: "Loss",
-            fillColor : "rgba(151,187,205,0.5)",
-            strokeColor : "rgba(151,187,205,1)",
-            pointColor : "rgba(151,187,205,1)",
-            pointStrokeColor : "#fff",
-            data : []
+            borderColor: "rgba(255,176,0,0.5)",
+            // backgroundColor: "rgba(255,176,0,0.5)",
+            backgroundColor: 'rgba(255,255,255,0)',
+            data: [],
+            yAxisID: 'loss',
+            borderWidth: 2,
+            pointRadius: 2
           }
         ]
       },
@@ -131,6 +137,23 @@ export default {
           animationDuration: 0,
           mode: 'nearest',
           intersect: true
+        },
+        scales: {
+          yAxes: [{
+              type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
+              display: true,
+              position: "left",
+              id: "loss",
+          }, {
+              type: "linear", // only linear but allow scale type registration. This allows extensions to exist solely for log scale for instance
+              display: true,
+              position: "right",
+              id: "acc",
+              // grid line settings
+              gridLines: {
+                  drawOnChartArea: false, // only want the grid lines for one axis to show up
+              },
+          }],
         }
       },
       completed: false
@@ -144,7 +167,7 @@ export default {
     },
     beforeAvatarUpload(file) {
       this.resultDisplay = false
-      this.recogNum = ''
+      this.recogNum = '?'
       return true
     }
   }
@@ -165,7 +188,7 @@ export default {
     overflow: visible;
   }
   .exp {
-    width: 360px;
+    width: 378px;
     padding-top: 40px;
     margin: auto;
   }
@@ -173,17 +196,31 @@ export default {
     width: 178px;
     float: left;
   }
+  .result {
+    border-left: solid #d9d9d9 1px;
+  }
+  .seperate {
+    float: left;
+    margin-left: 10px;
+    margin-right: 10px;
+    width: 1px;
+    background: #d9d9d9;
+    height: 256px;
+  }
   .result-title {
     margin-top: 20px;
-    font-size: 14px;
+    font-size: 12px;
     color: #777;
     display: none;
   }
   .result-num {
     float: left;
-    font-size: 64px;
+    font-size: 84px;
     color: #999;
     width: 178px;
+    height: 256px;
+    font-weight: 200;
+    line-height: 94px;
     text-align: center;
   }
  .avatar-uploader .el-upload {
