@@ -7,6 +7,24 @@
       "param": {}
     },
     {
+      "name": "relu_1",
+      "type": "relu",
+      "count": 1,
+      "param": {}
+    },
+    {
+      "name": "relu_2",
+      "type": "relu",
+      "count": 2,
+      "param": {}
+    },
+    {
+      "name": "relu_3",
+      "type": "relu",
+      "count": 3,
+      "param": {}
+    },
+    {
       "name": "conv2d_1",
       "type": "conv2d",
       "count": 1,
@@ -113,10 +131,10 @@
     },
     {
       "source": "max_pool2d_1",
-      "target": "relu"
+      "target": "relu_1"
     },
     {
-      "source": "relu",
+      "source": "relu_1",
       "target": "conv2d_2"
     },
     {
@@ -129,10 +147,10 @@
     },
     {
       "source": "max_pool2d_2",
-      "target": "relu"
+      "target": "relu_2"
     },
     {
-      "source": "relu",
+      "source": "relu_2",
       "target": "view_1"
     },
     {
@@ -141,10 +159,10 @@
     },
     {
       "source": "linear_1",
-      "target": "relu"
+      "target": "relu_3"
     },
     {
-      "source": "relu",
+      "source": "relu_3",
       "target": "dropout_1"
     },
     {
