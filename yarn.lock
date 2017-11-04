@@ -1436,15 +1436,15 @@ decamelize@^1.0.0, decamelize@^1.1.1, decamelize@^1.1.2:
   version "1.2.0"
   resolved "http://registry.npm.taobao.org/decamelize/download/decamelize-1.2.0.tgz#f6534d15148269b20352e7bee26f501f9a191290"
 
-deep-copy@^1.4.0:
-  version "1.4.0"
-  resolved "http://registry.npm.taobao.org/deep-copy/download/deep-copy-1.4.0.tgz#f181ef0249bc83bbc5bb866d95c7d565acf45e8b"
-
 decompress-response@^3.2.0:
   version "3.3.0"
   resolved "http://registry.npm.taobao.org/decompress-response/download/decompress-response-3.3.0.tgz#80a4dd323748384bfa248083622aedec982adff3"
   dependencies:
     mimic-response "^1.0.0"
+
+deep-copy@^1.4.0:
+  version "1.4.0"
+  resolved "http://registry.npm.taobao.org/deep-copy/download/deep-copy-1.4.0.tgz#f181ef0249bc83bbc5bb866d95c7d565acf45e8b"
 
 deep-extend@~0.4.0:
   version "0.4.2"

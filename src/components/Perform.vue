@@ -16,7 +16,7 @@
         <el-upload
           class="avatar-uploader"
           id="upload"
-          action="http://localhost:80/task/picture"
+          action="http://localhost:12450/task/picture"
           :show-file-list="false"
           :on-success="handleAvatarSuccess"
           :before-upload="beforeAvatarUpload">
@@ -60,12 +60,12 @@ export default {
       const acc = vm.chartData.datasets[0].data
       const loss = vm.chartData.datasets[1].data
       const interval = window.setInterval(() => {
-        vm.$http.get('http://localhost:80/task/process', { credentials: true }).then(resp => {
+        vm.$http.get('http://localhost:12450/task/process', { credentials: true }).then(resp => {
           if (resp.body.complete) {
             vm.completed = true
             vm.progress = 100
             window.clearInterval(interval)
-            vm.$http.get('http://localhost:80/task/status', { credentials: true }).then(resp => {
+            vm.$http.get('http://localhost:12450/task/status', { credentials: true }).then(resp => {
               const data = log2object(resp.body.data)
               while(labels.pop()) {}
               while(acc.pop()) {}
