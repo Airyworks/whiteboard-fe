@@ -18,6 +18,7 @@
           id="upload"
           action="http://localhost:12450/task/picture"
           :show-file-list="false"
+          :with-credentials="true"
           :on-success="handleAvatarSuccess"
           :before-upload="beforeAvatarUpload">
           <img v-if="imageUrl" :src="imageUrl" class="avatar">
