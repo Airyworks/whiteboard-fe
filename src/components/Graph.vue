@@ -1,22 +1,72 @@
 <template>
   <el-row :gutter="20" class="container">
-    <el-col :span="18">
+    <div id="board-bar">
       <div class="jtk-demo-main">
         <div class="jtk-demo-canvas canvas-wide nn-map jtk-surface jtk-surface-nopan" id="board">
           <div v-for="node in nodes"
                :id="node.name"
-               class="window">
+               class="window node">
+            <i class="el-icon-edit node-edit" @click="focusNode(node.name)"></i>
             {{ node.name }}
+            <ul>
+              <li v-for="(value, key) in node.param">{{key}}: {{value}}</li>
+            </ul>
           </div>
         </div>
       </div> 
-      <div id="list"></div>
-    </el-col>
-    <el-col :span="6">
-      <el-col :span="24">
-        <el-button type="primary" @click="addPoint">Add Operation</el-button>
+    </div>
+    <div id="menu-bar">
+      <el-col :span="24" id="main-menu" v-show="!subMenu.show">
+        <div id="new-opration-group">
+          <el-select v-model="selectedTemplate" filterable placeholder="请选择模版">
+            <el-option
+              v-for="(template, key) in templates"
+              :key="template.name"
+              :label="template.name"
+              :value="key">
+            </el-option>
+          </el-select>
+          <el-button id="new-opration-btn" type="primary" @click="initGraph" :disabled="false && !selectedTemplate">初始化图</el-button>
+          <br/><br/>
+          <el-select v-model="selectedNodeType" filterable placeholder="请选择">
+            <el-option
+              v-for="item in nodeTypes"
+              :key="item.label"
+              :label="item.label"
+              :value="item.value">
+            </el-option>
+          </el-select>
+          <el-button id="new-opration-btn" type="primary" @click="addPoint" :disabled="!selectedNodeType">添加操作</el-button>
+          <br><br>
+          <el-button id="complete-network" type="primary" @click="submitNetwork">完成网络</el-button>
+        </div>
       </el-col>
-    </el-col>
+      <el-col :span="24" id="sub-menu" v-show="subMenu.show">
+        <br>
+        <span>正在编辑: {{ subMenu.nowEdit.name }}</span>  
+        <br><br>
+        <el-form ref="form" :model="subMenu.nowEdit" label-width="60px">
+          <el-form-item
+            v-for="(value, key) in subMenu.nowEdit.param"
+            :label="key">
+            <el-input v-model="subMenu.nowEdit.param[key]"></el-input>
+          </el-form-item>
+        </el-form>
+        <el-button type="success" @click="saveChange">保存修改</el-button>
+        <el-button type="danger" @click="undoChange">取消选择</el-button>
+        <br><br>
+        <span>
+          添加数据流
+        </span>
+        <br><br>
+        <el-button-group>
+          <el-button type="primary" icon="el-icon-arrow-left"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-right"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-up"></el-button>
+          <el-button type="primary" icon="el-icon-arrow-down"></el-button>
+        </el-button-group>
+      </el-col>
+    </div>
   </el-row>
 </template>
 
@@ -26,52 +76,110 @@ import '../assets/jsplumb/style/main.css'
 import '../assets/jsplumb/style/jsplumbtoolkit-demo.css'
 import '../assets/jsplumb/style/demo.css'
 
+const dcopy = require('deep-copy')
 const jsPlumb = require("jsplumb")
+const defaultParam = require('../assets/config/nn.param.json')
+const templates = require('../assets/config/templates.json')
+const nodetypes = require('../assets/config/nodetypes.json')
+const subMenu = {
+        show: false,
+        nowEditName: undefined,
+        nowEdit: { param: {} }
+      }
+
+const defaultEndpoints = {top: [], left: [], right: [], bottom: []}
+
+// import networks
+templates.mnist.data = require('../assets/config/networks/mnist.json')
+
+// attatch endpoint arr to nodes
+for (let i in templates) {
+  for (let j in templates[i].data.nodes) {
+    templates[i].data.nodes[j].endpoints = dcopy(defaultEndpoints)
+  }
+}
 
 export default {
   name: 'Graph',
   data () {
     return {
+      templates: dcopy(templates),
+      selectedTemplate: undefined,
       nodeTypes: {
         init: ['conv2d', 'linear', 'dropout2d'],
-        forward: ['relu', 'max_pool2d', 'view', 'log_softmax'],
-        others: ['input', 'output']
+        forward: ['max_pool2d', 'view', 'log_softmax'],
+        others: ['input', 'output', 'relu']
       },
-      nodes: [
-        {
-          name: 'conv2d_1',
-          type: 'conv2d',
-        },
-        {
-          name: 'linear_1',
-          type: 'linear',
-        },
-        {
-          name: 'dropout2d_1',
-          type: 'dropout2d',
-        },
-        {
-          name: 'relu_1',
-          type: 'relu',
-        },
-        {
-          name: 'max_pool2d_1',
-          type: 'max_pool2d',
-        }
-      ]
+      nodeTypes: dcopy(nodetypes),
+      selectedNodeType: undefined,
+      nodes: [],
+      subMenu: dcopy(subMenu)
     }
   },
   methods: {
-    addPoint () {
-      this.nodes.push({
-        name: 'log_softmax_1',
-        type: 'log_softmax',
-      })
-      setTimeout(() => {
-        console.log(jsPlumb.getSelector(".nn-map #" + 'log_softmax_1'))
-        console.log(this)
-        this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + 'log_softmax_1'))
-      })
+    addPoint (e) {
+      if (this.selectedNodeType) {
+        const group = this.selectedNodeType.split('.')[0]
+        const type = this.selectedNodeType.split('.')[1]
+        let count = 1
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (type === this.nodes[i].type && count <= this.nodes[i].count) {
+            count = this.nodes[i].count + 1
+          }
+        }
+        const newNode = {
+          name: `${type}_${count}`,
+          type,
+          count,
+          param: Object.assign({}, )
+        }
+        console.log('created:', newNode)
+        this.nodes.push(newNode)
+        setTimeout(() => {
+          this.jsPlumbObj.instance.draggable(jsPlumb.getSelector(".nn-map #" + newNode.name))
+        })
+        this.selectedNodeType = undefined
+      } else {
+        // no selected opration
+      }
+    },
+    focusNode (name) {
+      if (!this.subMenu.show) {
+        this.subMenu.show = true
+        this.subMenu.nowEditName = name
+        for (let i = 0; i < this.nodes.length; i++) {
+          if (this.subMenu.nowEditName === this.nodes[i].name) {
+            this.subMenu.nowEdit = dcopy(this.nodes[i])
+          }
+        }
+      }
+    },
+    saveChange () {
+      for (let i = 0; i < this.nodes.length; i++) {
+        if (this.subMenu.nowEditName === this.nodes[i].name) {
+          this.nodes[i] = dcopy(this.subMenu.nowEdit)
+        }
+      }
+      this.subMenu = Object.assign({}, subMenu)
+    },
+    undoChange () {
+      this.subMenu = Object.assign({}, subMenu)
+    },
+    initGraph () {
+      console.log(this.selectedTemplate)
+      // for(let i = 0; i < this.nodes.length; i++) {
+      //   this.jsPlumbObj.instance.addEndpoint(this.nodes[i].name, this.jsPlumbObj.endPointStyle, {
+      //     anchor: this.jsPlumbObj.defaultAnchors.left
+      //   })
+      //   this.jsPlumbObj.instance.addEndpoint(this.nodes[i].name, this.jsPlumbObj.endPointStyle, {
+      //     anchor: this.jsPlumbObj.defaultAnchors.right
+      //   })
+      //   this.nodes[i].endpoints.left.push(dcopy(this.jsPlumbObj.defaultAnchors.left))
+      //   this.nodes[i].endpoints.right.push(dcopy(this.jsPlumbObj.defaultAnchors.right))
+      // }
+    },
+    submitNetwork () {
+      console.log(this.jsPlumbObj.instance.getAllConnections())
     }
   },
   beforeRouteEnter (to, from, next) {
@@ -88,27 +196,30 @@ export default {
           Anchors: ["TopCenter", "TopCenter"],
           Container: "canvas"
         });
-
+        window.instance = instance
         // suspend drawing and initialise.
         instance.batch(function () {
 
           // bind to connection/connectionDetached events, and update the list of connections on screen.
           instance.bind("connection", function (info, originalEvent) {
-            updateConnections(info.connection);
+            // updateConnections(info.connection);
+            console.log(info.connection)
+            
           });
           instance.bind("connectionDetached", function (info, originalEvent) {
-            updateConnections(info.connection, true);
+            // updateConnections(info.connection, true);
+            // console.log(info.connection)
           });
 
           instance.bind("connectionMoved", function (info, originalEvent) {
             //  only remove here, because a 'connection' event is also fired.
             // in a future release of jsplumb this extra connection event will not
             // be fired.
-            updateConnections(info.connection, true);
+            // updateConnections(info.connection, true);
           });
 
-          instance.bind("click", function (component, originalEvent) {
-            alert("click!")
+          instance.bind("dblclick", function (component, originalEvent) {
+            instance.deleteConnection(component)
           });
 
           // configure some drop options for use by all endpoints.
@@ -154,7 +265,7 @@ export default {
             endpoint: "Dot",
             paintStyle: {
               stroke: '#7AB02C',
-              fill: "transparent",
+              fill: "#7AB02C",
               radius: 7,
               strokeWidth: 1
             },
@@ -175,44 +286,17 @@ export default {
             dropOptions: dropOptions
           }
 
-          // setup some empty endpoints.  again note the use of the three-arg method to reuse all the parameters except the location
-          // of the anchor (purely because we want to move the anchor around here; you could set it one time and forget about it though.)
-          var e1 = instance.addEndpoint('linear_1', { anchor: [0.5, 1, 0, 1] }, endPointStyle);
+          vm.jsPlumbObj.endPointStyle = endPointStyle
 
           // setup some DynamicAnchors for use with the blue endpoints
           // and a function to set as the maxConnections callback.
-          var anchors = [
-            [1, 0.2, 1, 0],
-            [0.8, 1, 0, 1],
-            [0, 0.8, -1, 0],
-            [0.2, 0, 0, -1]
-          ],
-          maxConnectionsCallback = function (info) {
+          let maxConnectionsCallback = function (info) {
             alert("Cannot drop connection " + info.connection.id + " : maxConnections has been reached on Endpoint " + info.endpoint.id);
-          };
-
-          var e1 = instance.addEndpoint("linear_1", { anchor: anchors }, endPointStyle);
-
-          e1.bind("linear_1", maxConnectionsCallback);
-
-          var e2 = instance.addEndpoint('dropout2d_1', { anchor: [0.5, 1, 0, 1] }, endPointStyle);
-          // again we bind manually. it's starting to get tedious.  but now that i've done one of the blue endpoints this way, i have to do them all...
-          e2.bind("maxConnections", maxConnectionsCallback);
-          instance.addEndpoint('dropout2d_1', { anchor: "RightMiddle" }, endPointStyle);
-
-          var e3 = instance.addEndpoint("relu_1", { anchor: [0.25, 0, 0, -1] }, endPointStyle);
-          e3.bind("maxConnections", maxConnectionsCallback);
-          instance.addEndpoint("relu_1", { anchor: [0.75, 0, 0, -1] }, endPointStyle);
-
-          var e4 = instance.addEndpoint("max_pool2d_1", { anchor: [1, 0.5, 1, 0] }, endPointStyle);
-          e4.bind("maxConnections", maxConnectionsCallback);
-          instance.addEndpoint("max_pool2d_1", { anchor: [0.25, 0, 0, -1] }, endPointStyle);
+          }
+          
 
           // make .window divs draggable
           instance.draggable(jsPlumb.getSelector(".nn-map .window"));
-
-          // add endpoint of type 3 using a selector.
-          instance.addEndpoint(jsPlumb.getSelector(".nn-map .window"), endPointStyle);
 
           var hideLinks = jsPlumb.getSelector(".nn-map .hide");
           instance.on(hideLinks, "click", function (e) {
@@ -237,12 +321,18 @@ export default {
             instance.detachEveryConnection();
             showConnectionInfo("");
             jsPlumbUtil.consume(e);
-          });
-        });
+          })
+        })
 
         jsPlumb.fire("jsPlumbDemoLoaded", instance);
 
         vm.jsPlumbObj.instance = instance
+        vm.jsPlumbObj.defaultAnchors = {
+            top: [0.25, 0, 0, 0],
+            bottom: [0.25, 1, 0, 1],
+            left: [0, 0.25, 0, 0],
+            right: [1, 0.25, 1, 1]
+          }
       })
     })
   }
@@ -285,6 +375,29 @@ export default {
                   linear-gradient(90deg, transparent 50%, rgba(183, 183, 183, .5) 50%, rgba(183, 183, 183, .5)) 0 0 / 50px 50px white
   & .jtk-node
     color: #666
+  & .node
+    position: absolute
+    padding-top: 20px
+    text-align: center
+    & ul
+      padding: 0
+    & .node-edit
+      position: absolute
+      right: 5px
+      top: 5px
 
+#menu-bar
+  width: 350px
+  float: right
+  & #new-opration-group
+    & #new-opration-btn
+      transition: .5s
+
+.container
+  position: relative
+  & #board-bar
+    position: absolute
+    left: 20px
+    right: 370px
 
 </style>

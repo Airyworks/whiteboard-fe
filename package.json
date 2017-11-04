@@ -12,6 +12,7 @@
   "dependencies": {
     "biltong": "^0.4.0",
     "bootstrap": "^3.3.7",
+    "deep-copy": "^1.4.0",
     "element-theme-chalk": "^2.0.3",
     "element-ui": "^2.0.3",
     "endpoint": "^0.4.5",
@@ -19,6 +20,7 @@
     "jsbezier": "^0.9.1",
     "katavorio": "^0.21.0",
     "mottle": "^0.8.0",
+    "path": "^0.12.7",
     "stylus": "^0.54.5",
     "stylus-loader": "^3.0.1",
     "stylus-relative-loader": "^3.4.0",

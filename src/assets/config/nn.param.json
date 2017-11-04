@@ -1,0 +1,28 @@
+{
+  "conv2d": {
+    "in_channel": 3,
+    "out_channel": 64,
+    "kernel_size": 5,
+    "stride": 1,
+    "padding": 0
+  },
+  "dropout": {},
+  "dropout2d": {},
+  "linear": {
+    "in_channel": 64,
+    "out_channel": 10
+  },
+  "log_softmax": {},
+  "max_pool2d": {
+    "kernel_size": 2,
+    "stride": 2,
+    "padding": 0
+  },
+  "relu": {},
+  "view": {
+    "arg0": -1,
+    "arg1": 320
+  },
+  "input": {},
+  "output": {}
+}
