@@ -338,6 +338,14 @@ export default {
           }
         }
       }
+      for (let i = 0; i < flow.length; i++) {
+        if (flow[i].indexOf('input') >= 0) {
+          flow[i] = 'input'
+        }
+        if (flow[i].indexOf('output') >= 0) {
+          flow[i] = 'output'
+        }
+      }
       data.flow = flow.join('>>')
       for (let i = 0; i < flow.length; i++) {
         for (let j = 0; j < this.nodes.length; j++) {
