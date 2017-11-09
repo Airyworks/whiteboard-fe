@@ -1,11 +1,11 @@
 [
   {
     "value": "others.input",
-    "label": "output"
+    "label": "input"
   },
   {
     "value": "others.output",
-    "label": "input"
+    "label": "output"
   },
   {
     "value": "init.conv2d",

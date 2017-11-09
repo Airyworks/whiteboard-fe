@@ -336,6 +336,7 @@ export default {
         }
         return false
       }
+
       function flowPush(name) {
         const node = findNode(name)
         if (node) {
@@ -345,19 +346,25 @@ export default {
             flow.push(name)
           }
         }
-        
       }
+
       while (start != end) {
         for (let i = 0; i < connections.length; i++) {
+          let changeStart = false
           if (connections[i].sourceId == start) {
             flowPush(connections[i].sourceId)
-            start = connections[i].targetId
+            changeStart = true
           }
-          if (connections[i].targetId == end) {
+          if (connections[i].sourceId == start && connections[i].targetId == end) {
             flowPush(connections[i].targetId)
+          }
+          if (changeStart) {
+            start = connections[i].targetId
           }
         }
       }
+
+      console.log(flow.join('>>'))
       
       data.flow = flow.join('>>')
       for (let i = 0; i < flow.length; i++) {
@@ -391,7 +398,10 @@ momentum = ${this.param.momentum}
 iter_num = ${this.param.iter_num}
 batch_size = ${this.param.batch_size}`
       this.$http.post('http://localhost:12450/task', data, { credentials: true }).then(resp => {
-        alert('Submit success')
+        this.$message({
+          message: 'Submit success',
+          type: 'success'
+        })
         this.$router.push('/perform')
       })
     }
